@@ -47,4 +47,7 @@ df_base = df_base.sort_values(
 #df_base = df_base[:200]
 df_base = df_base.rename(variaveis, axis=1)
 
+df_corr = df_base.drop('ID_DO_ALUNO', axis=1)
+correlacoes = df_corr.corr()
+
 print("\n-Done")
