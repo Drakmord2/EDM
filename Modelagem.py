@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import pandas as pd
-import numpy as np
+import matplotlib.pyplot as plt
 from datetime import datetime
 
 # -----------------------------------------------------------------------------
@@ -21,6 +21,12 @@ def get_date(ts):
     return date
 
 
+def drop_invalid_columns(df):
+    colsdrop = ['Unnamed: 0', 'VAR19', 'VAR29', 'VAR30']
+    df = df.drop(colsdrop, axis=1)
+    return df
+
+
 def get_redundant_pairs(df):
     '''Get diagonal and lower triangular pairs of correlation matrix'''
     pairs_to_drop = set()
@@ -31,12 +37,20 @@ def get_redundant_pairs(df):
     return pairs_to_drop
 
 
-def get_top_abs_correlations(df, n=5):
-    au_corr = df.corr().abs().unstack()
+def get_top_correlations(df, n=5, asc=False, absolute=False):
+    au_corr = df.corr().abs().unstack() if absolute else df.corr().unstack()
     labels_to_drop = get_redundant_pairs(df)
-    au_corr = au_corr.drop(labels=labels_to_drop).sort_values(ascending=False)
+    au_corr = au_corr.drop(labels=labels_to_drop).sort_values(ascending=asc)
     return au_corr[0:n]
 
+
+def bar_plot_series(serie, name, save=False):
+    plt.figure(figsize=(20,10))
+    serie.plot.bar()
+    if save:
+        plt.savefig('./Outputs/Figuras/'+name+'.svg', bbox_inches='tight')
+        return
+    plt.show()
 
 # -----------------------------------------------------------------------------
 # Modelagem
@@ -46,6 +60,7 @@ def get_top_abs_correlations(df, n=5):
 print("\n- Carregar dados")
 base = './Base/Subsets/basePedagogia.csv'
 df_base = pd.read_csv(base, sep=';', decimal=',', index_col=False)
+df_base = drop_invalid_columns(df_base)
 
 # Variaveis de interesse (vide 'variaveis_tese')
 # Var02-10; Var24; Var31-c; 
@@ -61,11 +76,12 @@ df_base = df_base.sort_values(
 df_base = df_base.rename(variaveis, axis=1)
 
 print("- Analise")
-colsdrop = ['Unnamed: 0','ID_DO_ALUNO', 'CURSO','DATA_DE_INICIO',
-            'DATA_DE_FINAL', 'SEMESTRE', 'NOME_DA_DISCIPLINA','TEMPO_DE_CURSO',
-            'VAR19', 'VAR29', 'VAR30']
+colsdrop = ['ID_DO_ALUNO', 'CURSO','DATA_DE_INICIO','DATA_DE_FINAL', 
+            'SEMESTRE', 'NOME_DA_DISCIPLINA','TEMPO_DE_CURSO']
 df_corr = df_base.drop(colsdrop, axis=1)
 
-correlacoes_altas = get_top_abs_correlations(df_corr, 70)
+correlacoes_positivas = get_top_correlations(df_corr, 60)
+correlacoes_negativas = get_top_correlations(df_corr, 15, asc=True)
+correlacoes_absolutas = get_top_correlations(df_corr, 60, absolute=True)
 
 print("\n-Done")
