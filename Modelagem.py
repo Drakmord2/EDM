@@ -21,12 +21,29 @@ def get_date(ts):
     return date
 
 
+def get_redundant_pairs(df):
+    '''Get diagonal and lower triangular pairs of correlation matrix'''
+    pairs_to_drop = set()
+    cols = df.columns
+    for i in range(0, df.shape[1]):
+        for j in range(0, i+1):
+            pairs_to_drop.add((cols[i], cols[j]))
+    return pairs_to_drop
+
+
+def get_top_abs_correlations(df, n=5):
+    au_corr = df.corr().abs().unstack()
+    labels_to_drop = get_redundant_pairs(df)
+    au_corr = au_corr.drop(labels=labels_to_drop).sort_values(ascending=False)
+    return au_corr[0:n]
+
+
 # -----------------------------------------------------------------------------
 # Modelagem
 # -----------------------------------------------------------------------------
 
 # Base
-print("\n-Carregar dados")
+print("\n- Carregar dados")
 base = './Base/Subsets/basePedagogia.csv'
 df_base = pd.read_csv(base, sep=';', decimal=',', index_col=False)
 
@@ -36,18 +53,19 @@ df_base = pd.read_csv(base, sep=';', decimal=',', index_col=False)
 variaveis = {"VAR24": "MEDIA_ACESSO_SEMANAL", "VAR31": "TOTAL_ACESSOS"}
 
 # Seleção
-print("-Seleção")
-cols = ['SEMESTRE','NOME_DA_DISCIPLINA','PERIODO','ID_DO_ALUNO','VAR24', 
-        'VAR31', 'DESEMPENHO', 'DESEMPENHO_BINARIO']
-df_base = df_base[cols]
+print("- Seleção")
 df_base = df_base.sort_values(
         by=['VAR31', 'VAR24', 'DESEMPENHO'],
         ascending=False
         )
-#df_base = df_base[:200]
 df_base = df_base.rename(variaveis, axis=1)
 
-df_corr = df_base.drop('ID_DO_ALUNO', axis=1)
-correlacoes = df_corr.corr()
+print("- Analise")
+colsdrop = ['Unnamed: 0','ID_DO_ALUNO', 'CURSO','DATA_DE_INICIO',
+            'DATA_DE_FINAL', 'SEMESTRE', 'NOME_DA_DISCIPLINA','TEMPO_DE_CURSO',
+            'VAR19', 'VAR29', 'VAR30']
+df_corr = df_base.drop(colsdrop, axis=1)
+
+correlacoes_altas = get_top_abs_correlations(df_corr, 70)
 
 print("\n-Done")
