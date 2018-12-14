@@ -82,7 +82,7 @@ def get_subsets_semestre(df_base, path):
 
 # Base
 print("\n-Carregar dados")
-df_base_original = pd.read_csv('./Base/baseGeral.csv', sep=';', decimal=',')
+df_base_original = pd.read_csv('./Base/baseRaw.csv', sep=';', decimal=',')
 
 # Limpeza
 print("-Limpeza")
