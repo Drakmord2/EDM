@@ -3,6 +3,7 @@
 
 import pandas as pd
 import numpy as np
+import seaborn as sns
 import matplotlib.pyplot as plt
 from datetime import datetime
 from sklearn.ensemble import IsolationForest
@@ -45,13 +46,31 @@ def get_top_correlations(df, n=5, asc=False, absolute=False):
     au_corr = au_corr.drop(labels=labels_to_drop).sort_values(ascending=asc)
     return au_corr[0:n]
 
+
+ranges = {}
+def normalize(df):
+    result = df.copy()
+    for feature_name in df.columns:
+        max_value = df[feature_name].max()
+        min_value = df[feature_name].min()
+        ranges[feature_name] = (min_value, max_value)
+        
+        result[feature_name] = (df[feature_name] - min_value) / (max_value - min_value)
+    return result
+
+def denormalize(df):
+    result = df.copy()
+    for feature_name in df.columns:
+        result[feature_name] = df[feature_name] * (ranges[feature_name][1] - ranges[feature_name][0]) + ranges[feature_name][0]
+    return result
+
 def get_anomalies(base, reprovados=False):
     # Base de dado com e sem headers
     sample = base.copy()
     sample.columns = range(sample.shape[1])
     
     #Isolation Forest
-    clf = IsolationForest(max_samples='auto', contamination=0.01, n_jobs=-1)
+    clf = IsolationForest(max_samples='auto', contamination=0.05, n_jobs=-1)
     clf.fit(sample)
     
     # Deteccao de anomalias
@@ -77,8 +96,6 @@ def get_anomalies(base, reprovados=False):
     # Correlacoes
     anomalias_aprovados = anomalias.loc[anomalias['DESEMPENHO_BINARIO']==0]
     corr_aprovados = get_top_correlations(anomalias_aprovados, 4000, absolute=True)
-#    corr_aprovados = anomalias_aprovados.corr()
-#    corr_aprovados = corr_aprovados['DESEMPENHO']
     
     if reprovados:
         anomalias_reprovados = anomalias.loc[anomalias['DESEMPENHO_BINARIO']==1]
@@ -101,44 +118,60 @@ def bar_plot_series(serie, name, save=False):
         return
     plt.show()
 
+def heatmap(df, title):
+    f1, ax1 = plt.subplots(figsize=(5, 5))
+    plt.title(title)
+    corr = df.corr()
+    sns.heatmap(corr, 
+            xticklabels=corr.columns,
+            yticklabels=corr.columns,
+            ax=ax1)
+
 # -----------------------------------------------------------------------------
 # Modelagem
 # -----------------------------------------------------------------------------
-print("--------------------------------------------------------------------")
+#%%
 # Base
+print("--------------------------------------------------------------------")
 print("\n- Carregar dados")
 base = './Base/Subsets/basePedagogia.csv'
 df_base = pd.read_csv(base, sep=';', decimal=',', index_col=False)
 df_base = drop_invalid_columns(df_base)
 
+#%%
 # Seleção
 print("- Seleção")
 df_base = df_base.sort_values(
         by=['VAR31', 'VAR24', 'DESEMPENHO'],
         ascending=False
         )
-
+#%%
 print("- Analise")
 print("  - Correlações")
-# TODO Normalizar dados de entrada
-# TODO Variar parametros do isolation forest
-# TODO Explicar variaveis de interesse
-# TODO Escrever artigo detalhando cada fase da CRISP-DM
 
 # Variaveis de interesse (vide 'variaveis_tese.xslx')
-df_corr = df_base[['VAR02', 'VAR03', 'VAR04','VAR06', 'VAR07', 'VAR16','VAR18', 'VAR20',
+df_clean = df_base[['VAR02', 'VAR03', 'VAR04','VAR06', 'VAR07', 'VAR16','VAR18', 'VAR20',
                    'VAR24', 'VAR31', 'VAR33', 'VAR34', 'MEDIA_PROVAS', 'MEDIA_FORUM', 
                    'MEDIA_WEBQUEST', 'DESEMPENHO', 'DESEMPENHO_BINARIO']]
 
-df_corr = df_corr.loc[df_corr['DESEMPENHO_BINARIO']==0]
-#correlacoes_positivas = get_top_correlations(df_corr, 60)
-#correlacoes_negativas = get_top_correlations(df_corr, 15, asc=True)
-correlacoes_absolutas = get_top_correlations(df_corr, 4000, absolute=True)
+correlacoes_absolutas = get_top_correlations(df_clean, 4000, absolute=True)
 
+#%%
+print("  - Normalização")
+
+df_clean_norm = normalize(df_clean)
+
+#%%
 print("  - Anomalias")
+anomalias_aprovados_norm, correlacoes_aprovados, _, _ = get_anomalies(df_clean_norm)
 
-anomalias_aprovados, correlacoes_aprovados, _, _ = get_anomalies(df_corr)
-diff = pd.concat([correlacoes_absolutas, correlacoes_aprovados], axis=1)
-diff = diff.rename(index=str, columns={0:"Base", 1:"Anomalias"})
+#%%
+print("  - Desnormalização")
+anomalias_aprovados_denorm = denormalize(anomalias_aprovados_norm)
+
+#%%
+print("  - Heatmap")
+heatmap(df_clean, "Original")
+heatmap(anomalias_aprovados_denorm, "Anomalias")
 
 print("\n--------------------------------------------------------------------")
