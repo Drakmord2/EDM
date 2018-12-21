@@ -65,6 +65,8 @@ def get_tempo_total(row):
     return tempo
 
 def get_subsets_semestre(df_base, path):
+    df_base.to_csv(path+'.csv', sep=';', decimal=',')
+    
     semestres = []
     for ano in range(2009,2017,1):
         semestres.append(str(ano)+".1")
