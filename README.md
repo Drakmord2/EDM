@@ -11,4 +11,4 @@ According to the legislation of Brazil’s Ministry of Education (MEC),  the stu
     
 - PreProcessing.py - Formats the dataset and generates subsets for analysis.
 
-- Modelling Notebook - Applies the technic to a subset.
+- Modeling Notebook - Applies the technic to a subset.
